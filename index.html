@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="pl">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="description" content="Narzędzie do audytu deklaracji dostępności – szybka lista kontrolna zgodności z Warunkami Technicznymi, eksport raportu HTML/JSON, lokalny zapis szkicu." />
+    <meta name="color-scheme" content="light" />
+    <title>Audyt deklaracji dostępności — zgodność z warunkami technicznymi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <style>
+        body {
+            padding: 1rem;
+            background: #f7f9fb;
+            font-family: system-ui, Segoe UI, Roboto, Arial;
+        }
+
+        .card {
+            margin-bottom: 0.75rem
+        }
+
+        .badge-found {
+            background: #e9f7ef;
+            color: #0b6b2d;
+            border-radius: 4px;
+            padding: 3px 6px
+        }
+
+        .badge-miss {
+            background: #fdecea;
+            color: #a12b1f;
+            border-radius: 4px;
+            padding: 3px 6px
+        }
+
+        .badge-nd {
+            background: #eef3fb;
+            color: #1f4a8a;
+            border-radius: 4px;
+            padding: 3px 6px
+        }
+
+        .row-item {
+            border: 1px solid #e6eef6;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            background: white;
+        }
+
+        .controls .btn {
+            min-width: 5.5rem
+        }
+
+        .small-muted {
+            font-size: .85rem;
+            color: #666
+        }
+
+        input[type="text"] {
+            width: 100%
+        }
+
+        textarea {
+            width: 100%
+        }
+
+        details {
+            margin-top: .5rem;
+            margin-bottom: .5rem
+        }
+
+        pre.quote {
+            background: #f8f9fa;
+            border-left: 3px solid #ddd;
+            padding: .5rem;
+            font-size: .9rem;
+            white-space: pre-wrap
+        }
+
+        @media print {
+            .no-print {
+                display: none !important
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <noscript>
+        <div class="alert alert-warning m-3">To narzędzie wymaga włączonej obsługi JavaScript.</div>
+    </noscript>
+    <div class="container">
+        <header class="mb-3">
+            <h1 class="h4">Audyt — Deklaracja Dostępności (zgodność z warunkami technicznymi)</h1>
+            <p class="small-muted">Wklej deklarację, wykonaj weryfikację pozycji (Spełnione / Niespełnione / Nie
+                dotyczy). Każdy punkt zawiera rozwijany fragment: cytat z Warunków Technicznych oraz przejrzystą
+                parafrazę.</p>
+        </header>
+
+        <section class="card p-3 mb-3">
+            <div class="mb-2">
+                <label class="form-label">Data audytu</label>
+                <input id="auditDate" type="date" class="form-control form-control-sm">
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Autor raportu</label>
+                <input id="authorName" class="form-control form-control-sm" placeholder="Imię i nazwisko / zespół">
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label">Podmiot / Strona (nazwa lub URL)</label>
+                <input id="entityName" class="form-control" placeholder="np. Urząd Miasta X / https://...">
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label">Wklej treść deklaracji (HTML lub czysty tekst)</label>
+                <textarea id="declarationText" rows="8" class="form-control"
+                    placeholder="Wklej tutaj treść deklaracji... (np. źródło HTML deklaracji)"></textarea>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button id="prefillBtn" class="btn btn-primary">Prefill – wykryj frazy</button>
+                <button id="clearBtn" class="btn btn-outline-secondary">Wyczyść</button>
+                <div class="ms-auto small-muted align-self-center">Opracowano na podstawie <a
+                        href="https://mc.bip.gov.pl/objasnienia-prawne/warunki-techniczne-publikacji-oraz-struktura-dokumentu-elektronicznego-deklaracji-dostepnosci.html">Warunków
+                        technicznych publikacji oraz struktury dokumentu elektronicznego deklaracji dostępności</a>.
+                </div>
+            </div>
+        </section>
+
+        <section class="card p-3 mt-2">
+            <h2 class="h6 mb-2">Analiza kolejności sekcji</h2>
+            <p id="sequenceResult" class="small-muted mb-0">Brak wklejonej treści do analizy kolejności.</p>
+        </section>
+
+        <section id="checklistSection"></section>
+
+        <section class="card p-3 mt-3">
+            <h2 class="h6">Wynik audytu</h2>
+            <div class="mb-2"><strong>Procent zgodności:</strong> <span id="scorePerc">—</span></div>
+            <div class="mb-2"><strong>Ocena opisowa:</strong> <span id="scoreLabel">—</span></div>
+            <div class="mb-2"><strong>Braki / krytyczne pozycje:</strong>
+                <ul id="missingList"></ul>
+            </div>
+            <div class="d-flex gap-2 no-print">
+                <button id="saveDraftBtn" class="btn btn-outline-warning">Zapisz szkic</button>
+                <button id="exportJsonBtn" class="btn btn-outline-primary">Eksportuj JSON</button>
+                <label class="btn btn-outline-secondary mb-0">
+                    Importuj JSON <input id="importJson" type="file" accept="application/json" hidden>
+                </label>
+                <button id="exportHtmlBtn" class="btn btn-success">Eksportuj raport (HTML)</button>
+                <button id="resetBtn" class="btn btn-danger ms-auto">Resetuj</button>
+            </div>
+        </section>
+
+    </div>
+    <script>
+        // Flaga informująca o niezapisanych zmianach.
+        let DIRTY = false;
+    function markDirty() { DIRTY = true; }
+        function setClean() { DIRTY = false; }
+    const DRAFT_KEY = 'audyt-deklaracji-szkic';
+        const CHECKPOINTS = [
+            {
+                id: 'isHTML', title: 'Format HTML', required: true, keywords: ['</'], critical: true,
+                quote: '"Deklarację dostępności publikuje się w formacie HTML (...)"',
+                para: 'Deklaracja powinna być opublikowana w formacie HTML, a nie jako obrazek czy PDF.'
+            },
+            {
+                id: 'language', title: 'Język deklaracji', required: true, keywords: ['lang='], critical: true,
+                quote: '"(...) deklaracja dostępności przygotowywana jest w tym samym języku, co treść strony internetowej lub aplikacji mobilnej, do której odnosi się deklaracja."',
+                para: 'Deklaracja powinna być w tym samym języku co strona/aplikacja i zawierać odpowiedni atrybut lang w elemencie <html> oraz w sekcjach.'
+            },
+            {
+                id: 'location', title: 'Miejsce opublikowania deklaracji dostępności i linku do niej', required: true, keywords: [], critical: true,
+                quote: '"Deklarację dostępności strony internetowej publikuje się na stronie internetowej, której dotyczy deklaracja lub na innej, odpowiedniej stronie internetowej. Link do deklaracji dostępności jest opublikowany w taki sposób, aby był łatwo dostępny podczas nawigacji, np. w stopce strony."',
+                para: 'Deklaracja powinna być opublikowana na stronie, której dotyczy, lub na innej odpowiedniej stronie, z łatwo dostępnym linkiem (np. w stopce).'
+            },
+            {
+                id: 'content-tags-h', title: 'Użyto poprawnie znaczników nagłówków (od h1 do h6)', required: true, keywords: ['<h2>', '<h3>', '<h4>'], critical: true,
+                quote: '"Do prezentacji treści w sekcjach wykorzystuje się odpowiednie elementy HTML: znaczniki nagłówków (od h1 do h6)"',
+                para: 'Deklaracja powinna używać odpowiednich znaczników nagłówków (h1 do h6) do strukturyzacji treści.'
+            },
+            {
+                id: 'content-tags-p', title: 'Użyto poprawnie znaczników akapitów', required: true, keywords: ['<p>'], critical: true,
+                quote: '"Do prezentacji treści w sekcjach wykorzystuje się odpowiednie elementy HTML: (...) znaczniki akapitu (p)"',
+                para: 'Deklaracja powinna używać znaczników <p> do oznaczania akapitów tekstu.'
+            },
+            {
+                id: 'content-tags-list', title: 'Użyto poprawnie znaczników nieuporządkowanych i uporządkowanych', required: true, keywords: ['<ul>', '<ol>', '<li>'], critical: true,
+                quote: '"Do prezentacji treści w sekcjach wykorzystuje się odpowiednie elementy HTML: (...) znaczniki list nieuporządkowanych (ul i li), znaczniki list uporządkowanych (ol i li)"',
+                para: 'Deklaracja powinna używać znaczników <ul>, <ol> i <li> do tworzenia list punktowanych i numerowanych.'
+            },
+            {
+                id: 'content-tags-section', title: 'Użyto poprawnie znaczników sekcji', required: true, keywords: ['<section', '<div'], critical: true,
+                quote: '"Do prezentacji treści w sekcjach wykorzystuje się odpowiednie elementy HTML: (...) znaczniki section z atrybutem id, gdy wymagane jest oznaczenie treści identyfikatorem,"',
+                para: 'Deklaracja powinna używać znaczników <section> lub <div> do grupowania treści, szczególnie gdy wymagane jest oznaczenie identyfikatorem.'
+            },
+            {
+                id: 'content-tags-span', title: 'Użyto poprawnie znaczników span', required: true, keywords: ['<span'], critical: true,
+                quote: '"Do prezentacji treści w sekcjach wykorzystuje się odpowiednie elementy HTML: (...) znaczniki span z atrybutem id, gdy wymagane jest oznaczenie fragmentu treści identyfikatorem"',
+                para: 'Deklaracja powinna używać znaczników <span> do oznaczania fragmentów tekstu identyfikatorami, gdy jest to wymagane.'
+            },
+            {
+                id: 'content-tags-time', title: 'Użyto poprawnie znacznika time do dat', required: true, keywords: ['<time'], critical: true,
+                quote: '""Do prezentacji treści w sekcjach wykorzystuje się odpowiednie elementy HTML: (...) znaczniki time z atrybutem datetime, gdy podawane są daty"',
+                para: 'Deklaracja powinna używać znacznika <time> z atrybutem datetime do oznaczania dat.'
+            },
+            {
+                id: 'content-tags-a', title: 'Użyto poprawnie znaczników linków (a)', required: true, keywords: ['<a href='], critical: true,
+                quote: '"Do prezentacji treści w sekcjach wykorzystuje się odpowiednie elementy HTML: (...) znaczniki a z atrybutem href, gdy podawane są linki"',
+                para: 'Deklaracja powinna używać znaczników <a> z atrybutem href do oznaczania linków.'
+            },
+            {
+                id: 'content-tags-abbr', title: 'Użyto poprawnie znaczników skrótów (abbr)', required: false, keywords: ['<abbr'], critical: false,
+                quote: '"Do prezentacji treści w sekcjach wykorzystuje się odpowiednie elementy HTML: (...) znaczniki abbr z atrybutem title, gdy używane są skróty."',
+                para: 'Jeśli w deklaracji używane są skróty, powinny być oznaczone znacznikami <abbr> z atrybutem title zawierającym pełną formę skrótu.'
+            },
+            {
+                id: 'title', title: 'Tytuł deklaracji', required: true, keywords: ['deklaracja dostępności', '<h1>deklaracja dostępno', 'a11y-wstep'], critical: true,
+                quote: '"Deklaracja rozpoczyna się tytułem. Tytuł deklaracji jest elementem obowiązkowym, który należy odwzorować wiernie. Tytuł deklaracji obejmuje się znacznikiem h1 lub h2, zgodnie z konwencją znakowania tytułów na stronie, na której publikowana jest deklaracja."',
+                para: 'Deklaracja powinna zaczynać się nagłówkiem zawierającym dokładny tytuł „Deklaracja dostępności”. Użyj h1 lub h2.'
+            },
+            {
+                id: 'intro', title: 'Oświadczenie wstępne (a11y-wstep)', required: true, keywords: ['a11y-wstep', 'zobowiązuje się zapewnić dostępność'], critical: true,
+                quote: '"(...) oświadczenie o przestrzeganiu przepisów (...) Ma obowiązkowy wzór i jest oznaczane identyfikatorem a11y-wstep."',
+                para: 'Sekcja wstępna powinna zawierać standardowy tekst o zobowiązaniu podmiotu do zapewnienia dostępności oraz wskazanie zakresu deklaracji. Powinna być oznaczona identyfikatorem a11y-wstep.'
+            },
+            {
+                id: 'podmiot', title: 'Podmiot publiczny (a11y-podmiot)', required: true, keywords: ['Podmiot publiczny', 'a11y-podmiot'], critical: true,
+                quote: '"W deklaracji dostępności dodaje się atrybuty id (identyfikatory) wymienione w tabeli (...)".',
+                para: 'Nazwa podmiotu publicznego w sekcji z oświadczeniem wstępnym w znaczniku oznaczonym identyfikatorem a11y-podmiot.'
+            },
+            {
+                id: 'zakres', title: 'Zakres deklaracji (a11y-zakres)', required: true, keywords: ['a11y-zakres'], critical: true,
+                quote: '"W deklaracji dostępności dodaje się atrybuty id (identyfikatory) wymienione w tabeli (...)".',
+                para: 'Zakres deklaracji (strona internetowa lub aplikacja mobilna) w sekcji z oświadczeniem wstępnym w znaczniku oznaczonym identyfikatorem a11y-zakres.'
+            },
+            {
+                id: 'url', title: 'Adres strony/aplikacji, której dotyczy deklaracja', required: true, keywords: ['a11y-url'], critical: true,
+                quote: '"W deklaracji dostępności dodaje się atrybuty id (identyfikatory) wymienione w tabeli (...)".',
+                para: 'Adres URL strony internetowej lub strony, z której można pobrać aplikację mobilną, której dotyczy deklaracja, w sekcji z oświadczeniem wstępnym w znaczniku oznaczonym identyfikatorem a11y-url.'
+            },
+            {
+                id: 'publicationDate', title: 'Data publikacji / aktualizacji', required: true, keywords: ['data publikacji', 'a11y-data-publikacja', 'ostatnia aktualizacja', 'a11y-data-aktualizacja'], critical: true,
+                quote: '"(...) data pierwszej publikacji strony internetowej lub aplikacji mobilnej i data ostatniej, istotnej aktualizacji (modernizacji) tej strony lub tej aplikacji. Obie te daty są wymagane, a sposób ich zapisu musi wiernie odwzorowywać wzorzec (...) Daty zapisuje się w znaczniku "time", dodając odpowiednio identyfikatory a11y-data-publikacja oraz a11y-data-aktualizacja, w formacie: dzień (liczbowo) miesiąc (słownie) rok (liczbowo), np. 5 lutego 2020 r. lub dla wersji innych niż w języku polskim w formie najbardziej czytelnej, powszechnie używanej i zrozumiałej dla tego języka, i uzupełnia o atrybut "datetime", w którym ta sama data podawana jest w formacie rrrr-mm-dd.".',
+                para: 'Podaj datę pierwszej publikacji oraz datę ostatniej istotnej aktualizacji deklaracji, używając znacznika <time> oznaczonego identyfikatorami a11y-data-publikacja i a11y-data-aktualizacja oraz atrybutu datetime.'
+            },
+            {
+                id: 'status', title: 'Stan dostępności cyfrowej (a11y-status)', required: true, keywords: ['a11y-status', 'jest w pełni zgodna', 'częściowo zgodna', 'niezgodna'], critical: true,
+                quote: '"Stan dostępności cyfrowej. Jest to obowiązkowa forma tego śródtytułu (...). Treść sekcji jest oznaczona identyfikatorem a11y-status."',
+                para: 'Powinna być wyraźna informacja oznaczona identyfikatorem a11y-status, czy strona jest: w pełni zgodna, częściowo zgodna czy niezgodna z załącznikiem do ustawy.'
+            },
+            {
+                id: 'niedostepne', title: 'Niedostępne treści (opis problemów)', required: false, keywords: ['Niedostępne treści', 'Niezgodność z załącznikiem', 'Nadmierne koszty'], critical: false,
+                quote: '"Sekcję umieszcza się w deklaracji dostępności jedynie w przypadku gdy został wybrany stan dostępności cyfrowej „częściowo zgodna” lub „niezgodna”. Opis tej sekcji zaczyna się tytułem: Niedostępne treści. Jest to wymagana forma tego tytułu. Niedostępne treści należy wymienić w podziale na maksymalnie 3 grupy oznaczone odpowiednimi nagłówkami, zależnie od zidentyfikowanych problemów: Niezgodność z załącznikiem, Treści nieobjęte przepisami, Nadmierne koszty. (...) Treść wyników oceny lub link oznacza się identyfikatorem a11y-ocena."',
+                para: 'Jeśli są elementy niedostępne, opisz je z podaniem lokalizacji (URL/podstrona), rodzaju błędu, alternatyw i możliwych obejść. Podziel na grupy: Niezgodność z załącznikiem, Treści nieobjęte przepisami, Nadmierne koszty. Oznacz treść identyfikatorem a11y-ocena.'
+            },
+            {
+                id: 'preparation', title: 'Data i podstawa przygotowania deklaracji', required: true, keywords: ['a11y-data-sporzadzenie', 'data sporządzenia', 'a11y-data-przeglad', ], critical: true,
+                quote: '"W sekcji wskazuje się daty sporządzenia deklaracji i jej aktualizacji oraz podstawę oceny (...) Element HTML z datą sporządzenia deklaracji uzupełnia się o atrybut id="a11y-data-sporzadzenie", a element z datą przeglądu i aktualizacji o atrybut id="a11y-data-przeglad""',
+                para: 'Podaj datę sporządzenia i podstawę oceny oraz linki do raportów jeśli są. Użyj identyfikatorów a11y-data-sporzadzenie i a11y-data-przeglad. Daty powinny być w takim formacie jak w punkcie Data publikacji / aktualizacji z atrybutem datetime w znaczniku <time>.'
+            },
+            {
+                id: 'udogodnienia', title: 'Udogodnienia, ograniczenia i inne informacje', required: false, keywords: ['Udogodnienia', 'Plany likwidacji błędów'], critical: false,
+                quote: '"Udogodnienia, ograniczenia i inne informacje... o środkach zaradczych i planach likwidacji błędów."',
+                para: 'Sekcja opcjonalna na dodatkowe informacje: plany naprawcze, oświadczenia o wyższym poziomie dostępności, itp.'
+            },
+            {
+                id: 'shortcuts', title: 'Skróty klawiszowe (jeśli niestandardowe)', required: false, keywords: ['Skróty klawiszowe'], critical: false,
+                quote: '"Informacje o niestandardowych skrótach klawiszowych obecnych na stronie internetowej"',
+                para: 'Jeżeli strona używa niestandardowych skrótów klawiszowych, wymień je i opisz ich działanie.'
+            },
+            {
+                id: 'feedback', title: 'Informacje zwrotne i dane kontaktowe', required: true, keywords: ['kontakt', 'koordynator dostępno', 'informacje zwrotne'], critical: true,
+                quote: '"W sekcji podaje się nazwę komórki organizacyjnej lub imię i nazwisko osoby, do której zgłasza się problemy z dostępnością cyfrową oraz dane kontaktowych (telefon i adres e-mail) do tej komórki lub osoby, wraz z odpowiednimi identyfikatorami."',
+                para: 'Podaj dane kontaktowe (telefon, e-mail) do osoby lub komórki odpowiedzialnej za dostępność oraz wskazówki, jak zgłaszać uwagi. Imię i nazwisko lub nazwa komórki powinny być oznaczona identyfikatorem a11y-kontakt, adres e-mail powinien być oznaczony identyfikatorem a11y-email, a numer telefonu identyfikatorem a11y-telefon.'
+            },
+            {
+                id: 'procedures', title: 'Obsługa wniosków i skarg (a11y-procedura)', required: true, keywords: ['a11y-procedura', 'Obsługa wniosków i skarg'], critical: true,
+                quote: '"Blok zawierający opis procedury objęty jest znacznikami sekcji (<section> lub <div>) i posiada identyfikator a11y-procedura. (...) Niezbędny jest opis procedury skargowej (...) w tym ewentualnie podanie danych podmiotu, do którego skarga może być złożona. (...) W tej podsekcji podawany jest także link do strony internetowej Rzecznika Praw Obywatelskich (...)."',
+                para: 'Opisz jak składać wnioski i skargi, podaj terminy odpowiedzi oraz link do formularza rządowego i informacji o RPO. Sekcja powinna być oznaczona identyfikatorem a11y-procedura.'
+            },
+            {
+                id: 'pozostale', title: 'Pozostałe informacje', required: true, keywords: ['Pozostałe informacje'], critical: true,
+                quote: '"Sekcja jest wymagana. Zaczyna się śródtytułem: Pozostałe informacje. Jest to obowiązkowa forma tego śródtytułu i musi być wiernie odwzorowana."',
+                para: 'Sekcja zawiera podsekcje o aplikacjach mobilnych, dostępności budynków i komunikacyjno-informacyjnej; podaj linki lub opisy.'
+            },
+            {
+                id: 'aplikacje', title: 'Aplikacje mobilne (jeśli dotyczą)', required: false, keywords: ['a11y-aplikacje', 'Aplikacje mobilne'], critical: false,
+                quote: '"Podsekcja objęta jest znacznikami sekcji (<section> lub <div>) i posiada identyfikator a11y-aplikacje. W treści deklaracji wymienia się aplikacje mobilne wraz z linkami do stron, na których można je pobrać. Dodaje się te linki do deklaracji dostępności tych aplikacji mobilnych."',
+                para: 'Jeżeli posiadasz aplikacje mobilne, wymień je z linkami do sklepów i osobnymi deklaracjami dla każdej wersji. Sekcja powinna być oznaczona identyfikatorem a11y-aplikacje.'
+            },
+            {
+                id: 'architektura', title: 'Dostępność architektoniczna (minimalny opis)', required: true, keywords: ['a11y-architektura', 'Dostępność architektoniczna', 'pętle indukcyjne'], critical: true,
+                quote: '"Informacje zawarte w tym bloku to adres siedziby głównej podmiotu publicznego, opis jej dostępności architektonicznej lub link do innej strony internetowej, na której taki opis jest zamieszczony. Jeśli sekcja zawiera link do opisu dostępności architektonicznej, to jest on oznaczony identyfikatorem a11y-architektura-url)."',
+                para: 'Podaj podstawowe informacje: adres siedziby, czy wejścia są dostępne, informacje o toaletach, parkingach, pętli indukcyjnej itp. (minimalny zakres). Oznacz sekcję identyfikatorem a11y-architektura, a jeśli sekcja zawiera link do opisu dostępności architektonicznej identyfikatorem to powinien być oznaczony a11y-architektura-url.'
+            },
+            {
+                id: 'komunikacja', title: 'Dostępność komunikacyjno-informacyjna (PJM etc.)', required: true, keywords: ['a11y-komunikacja', 'tłumacz języka migowego'], critical: true,
+                quote: '"W podsekcji podany jest opis dostępności komunikacyjno-informacyjnej podmiotu lub link do strony internetowej, na której taki opis jest zamieszczony. W opisie konieczne jest podanie informacji o możliwości (lub jej braku) skorzystania z pomocy tłumacza języka migowego w kontakcie z podmiotem za pośrednictwem środków komunikacji elektronicznej np. przez komunikator."',
+                para: 'Opisz dostępność komunikacyjno-informacyjną podmiotu (np. czy jest możliwość skorzystania z tłumacza PJM) lub podaj link do takiego opisu. Oznacz sekcję identyfikatorem a11y-komunikacja.'
+            }
+        ];
+
+        function e(tag, attrs = {}, ...children) {
+            const el = document.createElement(tag);
+            for (const k in attrs) { if (k === 'class') el.className = attrs[k]; else if (k === 'html') el.innerHTML = attrs[k]; else el.setAttribute(k, attrs[k]); }
+            children.forEach(c => { if (typeof c === 'string') el.appendChild(document.createTextNode(c)); else if (c) el.appendChild(c); });
+            return el;
+        }
+
+        function renderChecklist(state) {
+            const sec = document.getElementById('checklistSection'); sec.innerHTML = '';
+            const card = e('div', { class: 'card p-3' });
+            card.appendChild(e('h2', { class: 'h6 mb-2' }, 'Checklist — elementy deklaracji (z cytatami i wytłumaczeniami)'));
+            CHECKPOINTS.forEach(cp => {
+                const found = state && state[cp.id] && typeof state[cp.id].prefill !== 'undefined' ? state[cp.id].prefill : null;
+                const row = e('div', { class: 'row-item', id: 'row_' + cp.id });
+                row.appendChild(e('div', { class: 'd-flex mb-1' }, e('strong', {}, cp.title), e('div', { class: 'ms-auto small-muted' }, cp.required ? 'Wymagane' : 'Opcjonalne')));
+                row.appendChild(e('div', { class: 'small-muted mb-2' }, cp.required ? 'Pozycja wymagana przez warunki techniczne' : 'Pozycja opcjonalna'));
+                const badge = e('div', { class: 'mb-2' });
+                if (found === true) badge.appendChild(e('span', { class: 'badge-found' }, 'wstępnie wykryto'));
+                else if (found === false) badge.appendChild(e('span', { class: 'badge-miss' }, 'nie wykryto'));
+                else badge.appendChild(e('span', { class: 'badge-nd' }, 'brak analizy'));
+                row.appendChild(badge);
+                const ctrl = e('div', { class: 'controls d-flex gap-2 align-items-center' });
+                const name = 'choice_' + cp.id;
+                ['Spełnione', 'Niespełnione', 'Nie dotyczy'].forEach((lbl, i) => {
+                    const v = i === 0 ? 'ok' : (i === 1 ? 'no' : 'na');
+                    const id = name + '_' + v;
+                    const input = e('input', { type: 'radio', name: name, id: id, value: v });
+                    if (state && state[cp.id] && state[cp.id].choice === v) input.checked = true;
+                    const label = e('label', { class: 'btn btn-outline-secondary btn-sm mb-0', for: id }, lbl);
+                    label.insertBefore(input, label.firstChild);
+                    ctrl.appendChild(label);
+                });
+                const comment = e('textarea', { class: 'form-control form-control-sm ms-2', placeholder: 'Komentarz (opcjonalny)', rows: '3' });
+                comment.value = (state && state[cp.id] ? state[cp.id].comment || '' : '');
+                comment.style.maxWidth = '48%';
+                ctrl.appendChild(comment);
+                row.appendChild(ctrl);
+                const details = e('details', {});
+                details.appendChild(e('summary', {}, 'Szczegóły z Warunków Technicznych (cytat + wytłumaczenie)'));
+                details.appendChild(e('div', { class: 'mt-2' }, e('pre', { class: 'quote' }, cp.quote)));
+                details.appendChild(e('div', { class: 'mt-2' }, e('strong', {}, 'Wytłumaczenie:'), e('div', { class: 'small-muted' }, cp.para)));
+                row.appendChild(details);
+                card.appendChild(row);
+            });
+            sec.appendChild(card);
+            attachListeners();
+        }
+
+        function attachListeners() {
+            document.querySelectorAll('[id^="row_"]').forEach(row => {
+                row.querySelectorAll('input[type=radio]').forEach(r => r.addEventListener('change', updateScore));
+                const comment = row.querySelector('textarea'); comment && comment.addEventListener('input', updateScore);
+            });
+            // Oznacz zmiany w checklistcie.
+            document.querySelectorAll('[id^="row_"] input[type=radio]').forEach(r => r.addEventListener('change', markDirty));
+            document.querySelectorAll('[id^="row_"] textarea').forEach(t => t.addEventListener('input', markDirty));
+            updateScore(); checkSequence();
+        }
+
+        function detectPrefill(text) {
+            if (!text) return null;
+            const lc = text.toLowerCase();
+            const res = {};
+            CHECKPOINTS.forEach(cp => {
+                let found = false;
+                if (cp.keywords && cp.keywords.length) found = cp.keywords.some(k => lc.includes(k.toLowerCase()));
+                res[cp.id] = found;
+            });
+            return res;
+        }
+
+        function checkSequence() {
+            const text = document.getElementById('declarationText').value || '';
+            if (!text) { document.getElementById('sequenceResult') && (document.getElementById('sequenceResult').textContent = 'Brak wklejonej treści do analizy kolejności.'); return; }
+            const expected = ['Deklaracja dostępności', 'Stan dostępności cyfrowej', 'Niedostępne treści', 'Przygotowanie deklaracji dostępności', 'Udogodnienia, ograniczenia i inne informacje', 'Skróty klawiszowe', 'Informacje zwrotne i dane kontaktowe', 'Obsługa wniosków i skarg związanych z dostępnością', 'Pozostałe informacje', 'Aplikacje mobilne', 'Dostępność architektoniczna', 'Dostępność komunikacyjno-informacyjna'];
+            const lc = text.toLowerCase();
+            const foundPositions = expected.map(title => ({ title, idx: lc.indexOf(title.toLowerCase()) }));
+            const foundOnly = foundPositions.filter(f => f.idx !== -1).sort((a, b) => a.idx - b.idx);
+            let ok = true;
+            for (let i = 0; i < foundOnly.length - 1; i++) {
+                const ei = expected.indexOf(foundOnly[i].title);
+                const ni = expected.indexOf(foundOnly[i + 1].title);
+                if (ni < ei) { ok = false; break; }
+            }
+            let msg = '';
+            if (foundOnly.length === 0) msg = 'Nie wykryto nagłówków z oczekiwanej listy.';
+            else { msg = `Wykryto ${foundOnly.length}/${expected.length} nagłówków. ` + (ok ? 'Kolejność wykrytych sekcji zgodna.' : 'Kolejność może być nieprawidłowa.'); }
+            const seqEl = document.getElementById('sequenceResult'); if (seqEl) seqEl.textContent = msg; document.getElementById('sequenceResult') && (document.getElementById('sequenceResult').style.color = ok ? 'green' : 'darkred');
+        }
+
+        function updateScore() {
+            let considered = 0, ok = 0;
+            const missing = [];
+            CHECKPOINTS.forEach(cp => {
+                const name = 'choice_' + cp.id;
+                const chosen = document.querySelector('input[name="' + name + '"]:checked');
+                const commentEl = document.querySelector('#row_' + cp.id + ' textarea');
+                const comment = commentEl ? (commentEl.value || '') : '';
+                if (chosen) {
+                    if (chosen.value === 'na') { }
+                    else {
+                        considered++;
+                        if (chosen.value === 'ok') ok++;
+                        else if (chosen.value === 'no') {
+                            missing.push(cp.title + ' — ' + (cp.critical ? 'krytyczny brak. ' : '') + (comment ? 'Komentarz: ' + comment : ''));
+                        }
+                    }
+                } else {
+                    considered++;
+                    missing.push(cp.title + ' — niezweryfikowane');
+                }
+            });
+            let percDisplay = '—', label = '—';
+            if (considered > 0) {
+                const perc = Math.round((ok / considered) * 100);
+                percDisplay = perc + ' %';
+                label = perc >= 90 ? 'Poprawna' : (perc >= 70 ? 'Ryzyko' : 'Niezgodna');
+            }
+            document.getElementById('scorePerc').textContent = percDisplay;
+            document.getElementById('scoreLabel').textContent = label;
+            const ml = document.getElementById('missingList');
+            ml.innerHTML = '';
+            missing.forEach(m => ml.appendChild(e('li', {}, m)));
+        }
+
+        function collectState() {
+            const obj = {
+                meta: {
+                    entity: document.getElementById('entityName').value || '',
+                    auditDate: document.getElementById('auditDate').value || '',
+                    author: document.getElementById('authorName') ? (document.getElementById('authorName').value || '') : ''
+                },
+                items: {}
+            };
+            let considered = 0, ok = 0;
+            CHECKPOINTS.forEach(cp => {
+                const name = 'choice_' + cp.id;
+                const chosen = document.querySelector('input[name="' + name + '"]:checked');
+                const commentEl = document.querySelector('#row_' + cp.id + ' textarea');
+                const comment = commentEl ? (commentEl.value || '') : '';
+                const prefill = (function () {
+                    const dt = document.getElementById('declarationText').value || '';
+                    const det = detectPrefill(dt);
+                    return det ? !!det[cp.id] : null;
+                })();
+                const choiceVal = chosen ? chosen.value : null;
+                if (choiceVal && choiceVal !== 'na') {
+                    considered++;
+                    if (choiceVal === 'ok') ok++;
+                } else if (!choiceVal) {
+                    considered++;
+                }
+                obj.items[cp.id] = { title: cp.title, required: !!cp.required, choice: choiceVal, comment: comment, prefill: prefill };
+            });
+            let percent = '—', label = '—';
+            if (considered > 0) {
+                percent = Math.round((ok / considered) * 100);
+                label = percent >= 90 ? 'Poprawna' : (percent >= 70 ? 'Ryzyko' : 'Niezgodna');
+            }
+            obj.summary = { percent, label };
+            return obj;
+        }
+
+        document.getElementById('prefillBtn').addEventListener('click', () => {
+            const txt = document.getElementById('declarationText').value || '';
+            const pre = detectPrefill(txt);
+            const state = {};
+            CHECKPOINTS.forEach(cp => state[cp.id] = { prefill: pre ? pre[cp.id] : null, choice: null, comment: '' });
+            renderChecklist(state);
+            checkSequence();
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            document.getElementById('declarationText').value = '';
+            renderChecklist();
+            document.getElementById('scorePerc').textContent = '—';
+            document.getElementById('scoreLabel').textContent = '—';
+            document.getElementById('missingList').innerHTML = '';
+            markDirty();
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            if (!confirm('Zresetować formularz?')) return;
+            document.getElementById('declarationText').value = '';
+            document.getElementById('entityName').value = '';
+            const auditInput = document.getElementById('auditDate'); if (auditInput) auditInput.value = '';
+            const authorInput = document.getElementById('authorName'); if (authorInput) authorInput.value = '';
+            renderChecklist();
+            updateScore();
+            setClean();
+            try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+        });
+
+        document.getElementById('exportJsonBtn').addEventListener('click', () => {
+            const st = collectState();
+            const val = validateBeforeExport(st);
+            if (!val.ok) {
+                const proceed = confirm(val.message + '\n\nKliknij „OK”, aby eksportować mimo to, lub „Anuluj”, aby przerwać.');
+                if (!proceed) return;
+            }
+            const data = st;
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'audyt-deklaracji-' + (new Date().toISOString().slice(0, 10)) + '.json';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            setClean();
+        });
+
+        document.getElementById('importJson').addEventListener('change', (ev) => {
+            const f = ev.target.files[0];
+            if (!f) return;
+            const r = new FileReader();
+            r.onload = () => {
+                try {
+                    const d = JSON.parse(r.result);
+                    if (d.rawDeclaration) document.getElementById('declarationText').value = d.rawDeclaration;
+                    if (d.meta && d.meta.entity) document.getElementById('entityName').value = d.meta.entity;
+                    if (d.meta && 'auditDate' in d.meta) document.getElementById('auditDate').value = d.meta.auditDate || '';
+                    if (d.meta && 'author' in d.meta && document.getElementById('authorName')) document.getElementById('authorName').value = d.meta.author || '';
+                    const state = {};
+                    CHECKPOINTS.forEach(cp => {
+                        const it = d.items && d.items[cp.id] ? d.items[cp.id] : { prefill: null, choice: null, comment: '' };
+                        state[cp.id] = { prefill: it.prefill, choice: it.choice, comment: it.comment || '' };
+                    });
+                    renderChecklist(state);
+                    Object.keys(state).forEach(id => {
+                        const choice = state[id].choice;
+                        if (choice) {
+                            const radio = document.querySelector('input[name="choice_' + id + '"][value="' + choice + '"]');
+                            if (radio) radio.checked = true;
+                        }
+                        const commentEl2 = document.querySelector('#row_' + id + ' textarea');
+                        if (commentEl2) commentEl2.value = state[id].comment || '';
+                    });
+                    updateScore();
+                    checkSequence();
+                } catch (e) {
+                    alert('Błąd importu JSON: ' + e.message);
+                }
+            };
+            r.readAsText(f);
+            ev.target.value = '';
+        });
+
+        // Zapis szkicu do localStorage
+        function saveDraft() {
+            const st = collectState();
+            st.rawDeclaration = document.getElementById('declarationText').value || '';
+            st.savedAt = new Date().toISOString();
+            try {
+                localStorage.setItem(DRAFT_KEY, JSON.stringify(st));
+                setClean();
+                alert('Szkic zapisany lokalnie.');
+            } catch (e) {
+                alert('Nie udało się zapisać szkicu: ' + e.message);
+            }
+        }
+
+        // Przywracanie szkicu z localStorage
+        function restoreDraft(d) {
+            try {
+                if (!d) return;
+                if (d.rawDeclaration) document.getElementById('declarationText').value = d.rawDeclaration;
+                if (d.meta) {
+                    if ('entity' in d.meta) document.getElementById('entityName').value = d.meta.entity || '';
+                    if ('auditDate' in d.meta) document.getElementById('auditDate').value = d.meta.auditDate || '';
+                    if ('author' in d.meta && document.getElementById('authorName')) document.getElementById('authorName').value = d.meta.author || '';
+                }
+                const state = {};
+                CHECKPOINTS.forEach(cp => {
+                    const it = d.items && d.items[cp.id] ? d.items[cp.id] : { prefill: null, choice: null, comment: '' };
+                    state[cp.id] = { prefill: it.prefill, choice: it.choice, comment: it.comment || '' };
+                });
+                renderChecklist(state);
+                Object.keys(state).forEach(id => {
+                    const choice = state[id].choice;
+                    if (choice) {
+                        const radio = document.querySelector('input[name="choice_' + id + '"][value="' + choice + '"]');
+                        if (radio) radio.checked = true;
+                    }
+                    const commentEl2 = document.querySelector('#row_' + id + ' textarea');
+                    if (commentEl2) commentEl2.value = state[id].comment || '';
+                });
+                updateScore();
+                checkSequence();
+                setClean();
+            } catch (e) {
+                alert('Nie udało się wczytać szkicu: ' + e.message);
+            }
+        }
+
+        // Event dla przycisku zapisu szkicu
+        document.getElementById('saveDraftBtn').addEventListener('click', saveDraft);
+
+        document.getElementById('exportHtmlBtn').addEventListener('click', () => {
+            const st = collectState();
+            const val = validateBeforeExport(st);
+            if (!val.ok) {
+                const proceed = confirm(val.message + '\n\nKliknij „OK”, aby eksportować mimo to, lub „Anuluj”, aby przerwać.');
+                if (!proceed) return;
+            }
+            const entity = st.meta.entity || '—';
+            const auditDate = st.meta.auditDate || '—';
+            const author = st.meta.author || '—';
+            let html = `<!doctype html><html><head><meta charset="utf-8"><title>Raport audytu deklaracji — ${escapeHtml(entity)}</title><style>body{font-family:Arial,Helvetica,sans-serif;padding:20px;color:#111}h1{font-size:18px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:8px;text-align:left}.bad{color:#b00}.comment{white-space:pre-wrap}</style></head><body><h1>Raport audytu deklaracji dostępności</h1><p><strong>Podmiot / strona:</strong> ${escapeHtml(entity)}<br/><strong>Data audytu:</strong> ${escapeHtml(auditDate)}<br/><strong>Autor raportu:</strong> ${escapeHtml(author)}</p><h2>Podsumowanie</h2><p><strong>Procent zgodności:</strong> ${st.summary.percent === '—' ? '—' : st.summary.percent + '%'}<br/><strong>Ocena:</strong> ${escapeHtml(st.summary.label)}</p><h2>Wykaz pozycji</h2><table><thead><tr><th>Wymóg</th><th>Wynik</th><th>Wymagany</th><th>Komentarz</th></tr></thead><tbody>`;
+            for (const cp of CHECKPOINTS) {
+                const it = st.items[cp.id];
+                const choiceLabel = it.choice === 'ok' ? 'Spełnione' : (it.choice === 'no' ? 'Niespełnione' : (it.choice === 'na' ? 'Nie dotyczy' : 'Nie zweryfikowano'));
+                html += `<tr><td>${escapeHtml(cp.title)}</td><td>${escapeHtml(choiceLabel)}</td><td>${cp.required ? 'Tak' : 'Nie'}</td><td class="comment">${escapeHtml(it.comment || '')}</td></tr>`;
+            }
+            html += `</tbody></table>`;
+            const issues = [];
+            for (const cp of CHECKPOINTS) {
+                const it = st.items[cp.id];
+                if (it.choice === 'no' || (!it.choice)) {
+                    issues.push(cp.title + ' — ' + (it.comment || 'brak komentarza'));
+                }
+            }
+            if (issues.length) {
+                html += `<h2>Braki i uwagi</h2><ul>`;
+                issues.forEach(i => html += `<li class="comment">${escapeHtml(i)}</li>`);
+                html += `</ul>`;
+            }
+            html += `</body></html>`;
+            const blob = new Blob([html], { type: 'text/html' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'raport-audyt-deklaracji-' + document.getElementById('auditDate').value + '.html';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setClean();
+        });
+
+        function escapeHtml(s) {
+            if (!s) return '';
+            return s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+        }
+
+        function validateBeforeExport(st) {
+            const missingAnswers = [];
+            const missingComments = [];
+            for (const cp of CHECKPOINTS) {
+                const it = st.items[cp.id] || {};
+                if (!it.choice) {
+                    missingAnswers.push(cp.title);
+                } else if (it.choice === 'no') {
+                    const c = (it.comment || '').trim();
+                    if (!c) missingComments.push(cp.title);
+                }
+            }
+            if (missingAnswers.length === 0 && missingComments.length === 0) return { ok: true, message: '' };
+
+            const summarize = (arr) => {
+                const shown = arr.slice(0, 5).map(t => '• ' + t).join('\n');
+                const more = arr.length > 5 ? `\n… i ${arr.length - 5} więcej` : '';
+                return shown + more;
+            };
+
+            let msg = 'Ostrzeżenie przed eksportem:\n';
+            if (missingAnswers.length) {
+                msg += `- Niewybrane odpowiedzi (${missingAnswers.length}):\n` + summarize(missingAnswers) + '\n';
+            }
+            if (missingComments.length) {
+                msg += `- „Niespełnione” bez komentarza (${missingComments.length}):\n` + summarize(missingComments) + '\n';
+            }
+            msg += '\nNie eksportuj — Anuluj\nEksportuj mimo to — OK';
+            return { ok: false, message: msg };
+        }
+
+        // Oznacz pola meta i deklaracji jako dirty przy zmianach.
+        ['entityName','auditDate','authorName','declarationText'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', markDirty);
+            if (el && el.type === 'date') el.addEventListener('change', markDirty);
+        });
+
+        // Ostrzeżenie przy próbie zamknięcia/z odświeżenia jeśli są niezapisane zmiany.
+        window.addEventListener('beforeunload', (e) => {
+            if (!DIRTY) return;
+            const msg = 'Masz niezapisane zmiany audytu. Jeśli teraz zamkniesz lub odświeżysz, utracisz postęp.';
+            e.preventDefault(); // Chrome
+            e.returnValue = msg; // Standard
+            return msg;
+        });
+
+        renderChecklist();
+
+        // Auto-wykrywanie szkicu po starcie
+        try {
+            const draftRaw = localStorage.getItem(DRAFT_KEY);
+            if (draftRaw) {
+                const d = JSON.parse(draftRaw);
+                const info = d && d.meta ? (d.meta.entity ? ` dla podmiotu: ${d.meta.entity}` : '') : '';
+                const ask = confirm(`Wykryto zapisany szkic${info}.\nCzy chcesz go wczytać teraz?`);
+                if (ask) restoreDraft(d);
+            }
+        } catch (e) { /* ignore */ }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,6 @@
+# Oszczędne ignorowanie
+.DS_Store
+node_modules/
+dist/
+.tmp/
+*.log
