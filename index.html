@@ -5,123 +5,673 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="description" content="Narzędzie do audytu deklaracji dostępności – szybka lista kontrolna zgodności z Warunkami Technicznymi, eksport raportu HTML/JSON, lokalny zapis szkicu." />
-    <meta name="color-scheme" content="light" />
-    <title>Audyt deklaracji dostępności — zgodność z warunkami technicznymi</title>
+    <meta name="color-scheme" content="light dark" />
+    <title>Audytor Deklaracji Dostępności — zgodność z warunkami technicznymi</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
     <style>
+        :root {
+            color-scheme: light dark;
+            --color-text: #111111;
+            --color-muted: #1f1f1f;
+            --color-background: #f4f6f8;
+            --color-surface: #ffffff;
+            --color-border: #c5d3e1;
+            --color-focus: #ff8c00;
+            --color-primary: #0b3d91;
+            --color-primary-dark: #072c6c;
+            --color-success: #0c4a2f;
+            --color-success-dark: #093521;
+            --color-danger: #7a0c00;
+            --color-danger-dark: #4f0600;
+            --color-info: #03506f;
+            --color-info-dark: #023a52;
+            --color-warning: #523000;
+            --color-warning-dark: #3b2200;
+            --color-secondary: #2e2e2e;
+            --color-choice-active-text: #ffffff;
+            --color-quote-bg: #eef2f6;
+            --color-quote-border: #274a75;
+            --shadow-card: 0 2px 6px rgba(9, 17, 34, 0.08);
+            --color-on-primary: #ffffff;
+            --color-on-secondary: #ffffff;
+            --color-on-success: #ffffff;
+            --color-on-danger: #ffffff;
+            --color-on-info: #ffffff;
+            --color-on-warning: #ffffff;
+            --color-success-status: #0c4a2f;
+            --color-warning-status: #523000;
+            --color-danger-status: #7a0c00;
+            --color-primary-surface: #0b3d91;
+            --color-success-surface: #0c4a2f;
+            --color-danger-surface: #7a0c00;
+            --color-info-surface: #03506f;
+            --color-warning-surface: #523000;
+        }
+
+        body[data-theme="dark"] {
+            --color-text: #f9fbff;
+            --color-muted: #cfd8e3;
+            --color-background: #0f141d;
+            --color-surface: #1a2433;
+            --color-border: #36435a;
+            --color-focus: #ffc15a;
+            --color-primary: #9cc9ff;
+            --color-primary-surface: #0f3d8d;
+            --color-primary-dark: #0b2f6a;
+            --color-success: #7ce2b4;
+            --color-success-surface: #0f6f47;
+            --color-success-dark: #0a5538;
+            --color-danger: #ff9b8a;
+            --color-danger-surface: #962417;
+            --color-danger-dark: #70180f;
+            --color-info: #7ec2ff;
+            --color-info-surface: #1f5f85;
+            --color-info-dark: #164a66;
+            --color-warning: #ffd27c;
+            --color-warning-surface: #b57d0a;
+            --color-warning-dark: #8a5f08;
+            --color-secondary: #d8e2f2;
+            --color-choice-active-text: #0b1728;
+            --color-quote-bg: #223044;
+            --color-quote-border: #7ec2ff;
+            --shadow-card: 0 8px 18px rgba(0, 0, 0, 0.45);
+            --color-on-primary: #ffffff;
+            --color-on-secondary: #0b1728;
+            --color-on-success: #ffffff;
+            --color-on-danger: #ffffff;
+            --color-on-info: #ffffff;
+            --color-on-warning: #1d1300;
+            --color-success-status: #7ce2b4;
+            --color-warning-status: #ffd27c;
+            --color-danger-status: #ff9b8a;
+        }
+
         body {
             padding: 1rem;
-            background: #f7f9fb;
-            font-family: system-ui, Segoe UI, Roboto, Arial;
+            background: var(--color-background);
+            color: var(--color-text);
+            font-family: system-ui, "Segoe UI", Roboto, Arial;
+            line-height: 1.6;
+            transition: background-color 0.25s ease, color 0.25s ease;
+        }
+
+        main {
+            background: transparent;
+        }
+
+        .container {
+            max-width: 1040px;
+        }
+
+        h1, h2, h3, h4, h5, h6,
+        .h1, .h2, .h3, .h4, .h5, .h6 {
+            color: var(--color-text);
         }
 
         .card {
-            margin-bottom: 0.75rem
+            margin-bottom: 1rem;
+            border: 1px solid var(--color-border);
+            border-radius: 0.75rem;
+            background-color: var(--color-surface);
+            box-shadow: var(--shadow-card);
+            color: var(--color-text);
         }
 
-        .badge-found {
-            background: #e9f7ef;
-            color: #0b6b2d;
-            border-radius: 4px;
-            padding: 3px 6px
+        .card p,
+        .card span,
+        .card li,
+        .card strong,
+        .card label {
+            color: var(--color-text);
         }
 
-        .badge-miss {
-            background: #fdecea;
-            color: #a12b1f;
-            border-radius: 4px;
-            padding: 3px 6px
+        .skip-link {
+            position: absolute;
+            top: 0.5rem;
+            left: 0.5rem;
+            background: var(--color-primary-surface);
+            color: var(--color-on-primary);
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem;
+            transform: translateY(-120%);
+            transition: transform 0.2s ease;
+            z-index: 1000;
         }
 
-        .badge-nd {
-            background: #eef3fb;
-            color: #1f4a8a;
-            border-radius: 4px;
-            padding: 3px 6px
-        }
-
-        .row-item {
-            border: 1px solid #e6eef6;
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 10px;
-            background: white;
-        }
-
-        .controls .btn {
-            min-width: 5.5rem
+        .skip-link:focus-visible {
+            transform: translateY(0);
+            outline: 3px solid var(--color-focus);
+            outline-offset: 4px;
         }
 
         .small-muted {
-            font-size: .85rem;
-            color: #666
+            font-size: 1rem;
+            color: var(--color-muted);
         }
 
-        input[type="text"] {
-            width: 100%
+        label, legend {
+            font-weight: 600;
+            color: var(--color-text);
         }
 
-        textarea {
-            width: 100%
+        .form-control {
+            width: 100%;
+            border: 2px solid var(--color-border);
+            border-radius: 0.5rem;
+            padding: 0.65rem 0.75rem;
+            font-size: 1rem;
+            line-height: 1.4;
+            color: var(--color-text);
+            background-color: var(--color-surface);
+            transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+            margin: 0;
+            min-height: 2.75rem;
+        }
+
+        .form-control-sm {
+            padding: 0.5rem 0.75rem;
+            min-height: 2.4rem;
+        }
+
+        .form-control:focus-visible {
+            outline: 3px solid var(--color-focus);
+            outline-offset: 2px;
+            border-color: var(--color-focus);
+            box-shadow: none;
+        }
+
+        textarea.form-control {
+            min-height: 6rem;
+            resize: vertical;
+        }
+
+        .form-control::placeholder {
+            color: var(--color-muted);
+            opacity: 0.8;
+        }
+
+        body[data-theme="dark"] .form-control {
+            background-color: #1f2e44;
+            border-color: #3a4d6a;
+            color: var(--color-text);
+        }
+
+        .row-item {
+            border: 2px solid var(--color-border);
+            border-radius: 0.75rem;
+            padding: 1.25rem 1.5rem 1.25rem 1.25rem;
+            margin-bottom: 1rem;
+            background: var(--color-surface);
+            color: var(--color-text);
+            position: relative;
+        }
+
+        .row-title {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            display: block;
+            padding-right: 5rem;
+        }
+
+        .row-description {
+            margin-bottom: 0.75rem;
+        }
+
+        .badge-wrapper {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+        }
+
+        .badge-found,
+        .badge-miss,
+        .badge-nd {
+            display: inline-block;
+            padding: 0.35rem 0.75rem;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            border: 2px solid currentColor;
+            background: var(--color-surface);
+        }
+
+        .badge-found {
+            color: var(--color-success-status);
+        }
+
+        .badge-miss {
+            color: var(--color-danger-status);
+        }
+
+        .badge-nd {
+            color: var(--color-info);
+        }
+
+        .badge-wrapper .badge-icon {
+            margin-right: 0.4rem;
+            font-size: 1.05rem;
+            line-height: 1;
+            vertical-align: middle;
+        }
+
+        .visually-hidden {
+            position: absolute !important;
+            width: 1px !important;
+            height: 1px !important;
+            padding: 0 !important;
+            margin: -1px !important;
+            overflow: hidden !important;
+            clip: rect(0, 0, 0, 0) !important;
+            white-space: nowrap !important;
+            border: 0 !important;
+        }
+
+        .choice-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .choice-label {
+            display: inline-flex;
+            align-items: center;
+            justify-content: flex-start;
+            flex-direction: row;
+            gap: 0.6rem;
+            padding: 0.9rem 1.25rem;
+            border: 2px solid var(--color-secondary);
+            border-radius: 0.65rem;
+            background: var(--color-surface);
+            color: var(--color-secondary);
+            font-weight: 600;
+            cursor: pointer;
+            min-width: 9rem;
+            transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+            text-align: left;
+        }
+
+        .choice-label input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .choice-label-text {
+            display: inline-flex;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+
+        .choice-label[data-choice="ok"] {
+            border-color: var(--color-success-status);
+            color: var(--color-success-status);
+        }
+
+        .choice-label[data-choice="no"] {
+            border-color: var(--color-danger-status);
+            color: var(--color-danger-status);
+        }
+
+        .choice-label[data-choice="na"] {
+            border-color: var(--color-info);
+            color: var(--color-info);
+        }
+
+        .choice-label[data-choice="ok"]:hover,
+        .choice-label[data-choice="ok"]:focus-within {
+            border-color: var(--color-success-surface);
+        }
+
+        .choice-label[data-choice="no"]:hover,
+        .choice-label[data-choice="no"]:focus-within {
+            border-color: var(--color-danger-surface);
+        }
+
+        .choice-label[data-choice="na"]:hover,
+        .choice-label[data-choice="na"]:focus-within {
+            border-color: var(--color-info-surface);
+        }
+
+        .choice-label:focus-within {
+            outline: 3px solid var(--color-focus);
+            outline-offset: 3px;
+        }
+
+        .choice-label[data-choice="ok"][data-state="checked"],
+        .choice-label[data-choice="ok"] input[type="radio"]:checked ~ .choice-label-text {
+            background-color: var(--color-success-surface);
+            border-color: var(--color-success-surface);
+            color: var(--color-on-success);
+        }
+
+        .choice-label[data-choice="no"][data-state="checked"],
+        .choice-label[data-choice="no"] input[type="radio"]:checked ~ .choice-label-text {
+            background-color: var(--color-danger-surface);
+            border-color: var(--color-danger-surface);
+            color: var(--color-on-danger);
+        }
+
+        .choice-label[data-choice="na"][data-state="checked"],
+        .choice-label[data-choice="na"] input[type="radio"]:checked ~ .choice-label-text {
+            background-color: var(--color-info-surface);
+            border-color: var(--color-info-surface);
+            color: var(--color-on-info);
+        }
+
+        .choice-comment {
+            max-width: 100%;
         }
 
         details {
-            margin-top: .5rem;
-            margin-bottom: .5rem
+            margin-top: 0.75rem;
+            margin-bottom: 0.25rem;
+        }
+
+        details summary {
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--color-text);
+        }
+
+        details summary:focus-visible {
+            outline: 3px solid var(--color-focus);
+            outline-offset: 4px;
         }
 
         pre.quote {
-            background: #f8f9fa;
-            border-left: 3px solid #ddd;
-            padding: .5rem;
-            font-size: .9rem;
-            white-space: pre-wrap
+            background: var(--color-quote-bg);
+            border-left: 4px solid var(--color-quote-border);
+            padding: 0.75rem;
+            font-family: system-ui, "Segoe UI", Roboto, Arial;
+            font-style: italic;
+            font-size: 1rem;
+            white-space: pre-wrap;
+            border-radius: 0.5rem;
+            color: var(--color-text);
+        }
+
+        .btn {
+            font-weight: 700;
+            border-radius: 0.65rem;
+            border-width: 2px;
+            letter-spacing: 0.01em;
+            padding: 0.6rem 1.1rem;
+            min-height: 2.75rem;
+            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .btn:focus-visible {
+            outline: 3px solid var(--color-focus);
+            outline-offset: 2px;
+        }
+
+        .btn-primary {
+            background-color: var(--color-primary-surface);
+            border-color: var(--color-primary-surface);
+            color: var(--color-on-primary);
+        }
+
+        .btn-primary:hover,
+        .btn-primary:focus-visible {
+            background-color: var(--color-primary-dark);
+            border-color: var(--color-primary-dark);
+        }
+
+        .btn-outline-secondary {
+            background-color: var(--color-surface);
+            color: var(--color-secondary);
+            border-color: var(--color-secondary);
+        }
+
+        .btn-outline-secondary:hover,
+        .btn-outline-secondary:focus-visible {
+            background-color: var(--color-secondary);
+            color: var(--color-on-secondary);
+        }
+
+        .btn-outline-warning {
+            background-color: var(--color-surface);
+            color: var(--color-warning);
+            border-color: var(--color-warning);
+        }
+
+        .btn-outline-warning:hover,
+        .btn-outline-warning:focus-visible {
+            background-color: var(--color-warning-surface);
+            color: var(--color-on-warning);
+            border-color: var(--color-warning-surface);
+        }
+
+        .btn-outline-primary {
+            background-color: var(--color-surface);
+            color: var(--color-primary);
+            border-color: var(--color-primary);
+        }
+
+        .btn-outline-primary:hover,
+        .btn-outline-primary:focus-visible {
+            background-color: var(--color-primary-surface);
+            color: var(--color-on-primary);
+            border-color: var(--color-primary-surface);
+        }
+
+        .btn-outline-info {
+            background-color: var(--color-surface);
+            color: var(--color-info);
+            border-color: var(--color-info);
+        }
+
+        .btn-outline-info:hover,
+        .btn-outline-info:focus-visible {
+            background-color: var(--color-info-surface);
+            color: var(--color-on-info);
+            border-color: var(--color-info-surface);
+        }
+
+        .btn-outline-danger {
+            background-color: var(--color-surface);
+            color: var(--color-danger);
+            border-color: var(--color-danger);
+        }
+
+        .btn-outline-danger:hover,
+        .btn-outline-danger:focus-visible {
+            background-color: var(--color-danger-surface);
+            color: var(--color-on-danger);
+            border-color: var(--color-danger-surface);
+        }
+
+        .btn-outline-info input[type="file"] {
+            cursor: pointer;
+        }
+
+        .btn-success {
+            background-color: var(--color-success-surface);
+            border-color: var(--color-success-surface);
+            color: var(--color-on-success);
+        }
+
+        .btn-success:hover,
+        .btn-success:focus-visible {
+            background-color: var(--color-success-dark);
+            border-color: var(--color-success-dark);
+        }
+
+        .btn-danger {
+            background-color: var(--color-danger-surface);
+            border-color: var(--color-danger-surface);
+            color: var(--color-on-danger);
+        }
+
+        .btn-danger:hover,
+        .btn-danger:focus-visible {
+            background-color: var(--color-danger-dark);
+            border-color: var(--color-danger-dark);
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .controls-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .header-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+            margin-top: 0.75rem;
+        }
+
+        .theme-toggle {
+            min-width: 13rem;
+        }
+
+        .controls-row .btn {
+            min-width: 6.5rem;
+        }
+
+        .no-print {
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .status-positive {
+            color: var(--color-success-status);
+            font-weight: 700;
+        }
+
+        .status-warning {
+            color: var(--color-warning-status);
+            font-weight: 700;
+        }
+
+        .status-danger {
+            color: var(--color-danger-status);
+            font-weight: 700;
+        }
+
+        .quote + .small-muted {
+            margin-top: 0.75rem;
+        }
+
+        footer {
+            margin-top: 1.5rem;
+        }
+
+        a {
+            color: var(--color-primary);
+            text-decoration: underline;
+            text-decoration-thickness: 0.15em;
+        }
+
+        a:focus-visible {
+            outline: 3px solid var(--color-focus);
+            outline-offset: 2px;
+        }
+
+        @media (max-width: 720px) {
+            body {
+                padding: 0.5rem;
+            }
+
+            .choice-group {
+                flex-direction: column;
+            }
+
+            .choice-label {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
         }
 
         @media print {
             .no-print {
-                display: none !important
+                display: none !important;
+            }
+
+            body {
+                background: #ffffff;
+                padding: 0;
+            }
+
+            main {
+                margin: 0;
             }
         }
     </style>
 </head>
 
 <body>
+    <a class="skip-link" href="#mainContent">Przejdź do głównej treści</a>
+    <a class="skip-link" href="#auditMetaHeading">Przejdź do danych audytu</a>
+    <a class="skip-link" href="#sequenceSection">Przejdź do sekwencji</a>
+    <a class="skip-link" href="#checklistSection">Przejdź do checklisty</a>
+    <a class="skip-link" href="#auditResultsSection">Przejdź do wyników audytu</a>
     <noscript>
         <div class="alert alert-warning m-3">To narzędzie wymaga włączonej obsługi JavaScript.</div>
     </noscript>
-    <div class="container">
-        <header class="mb-3">
-            <h1 class="h4">Audyt — Deklaracja Dostępności (zgodność z warunkami technicznymi)</h1>
+    <main id="mainContent" class="container" role="main">
+        <header class="mb-3" role="banner">
+            <h1>Audytor Deklaracji Dostępności</h1>
             <p class="small-muted">Wklej deklarację, wykonaj weryfikację pozycji (Spełnione / Niespełnione / Nie
                 dotyczy). Każdy punkt zawiera rozwijany fragment: cytat z Warunków Technicznych oraz przejrzystą
                 parafrazę.</p>
+            <div class="header-actions">
+                <button id="themeToggle" class="btn btn-outline-secondary theme-toggle" type="button" aria-pressed="false">Przełącz na ciemny motyw</button>
+                <span class="small-muted">Zmiana motywu dotyczy wyłącznie tego narzędzia.</span>
+            </div>
         </header>
 
-        <section class="card p-3 mb-3">
+        <section class="card p-3 mb-3" id="auditMetaHeading" aria-labelledby="auditMetaHeading">
+            <h2 id="auditMetaHeading" class="h5">Dane audytu</h2>
             <div class="mb-2">
-                <label class="form-label">Data audytu</label>
-                <input id="auditDate" type="date" class="form-control form-control-sm">
+                <label class="form-label" for="auditDate">Data audytu</label>
+                <input id="auditDate" type="date" class="form-control form-control-sm" aria-describedby="auditDateHint">
+                <p class="small-muted" id="auditDateHint">Podaj datę w formacie rrrr-mm-dd. Pole obowiązkowe do
+                    eksportu.</p>
             </div>
             <div class="mb-2">
-                <label class="form-label">Autor raportu</label>
-                <input id="authorName" class="form-control form-control-sm" placeholder="Imię i nazwisko / zespół">
+                <label class="form-label" for="authorName">Autor raportu</label>
+                <input id="authorName" type="text" class="form-control form-control-sm" placeholder="Imię i nazwisko / zespół" aria-describedby="authorHint">
+                <p class="small-muted" id="authorHint">Wpisz osobę lub zespół odpowiedzialny za audyt.</p>
             </div>
 
             <div class="mb-2">
-                <label class="form-label">Podmiot / Strona (nazwa lub URL)</label>
-                <input id="entityName" class="form-control" placeholder="np. Urząd Miasta X / https://...">
+                <label class="form-label" for="entityName">Podmiot / Strona (nazwa lub URL)</label>
+                <input id="entityName" type="text" class="form-control" placeholder="np. Urząd Miasta X / https://..." aria-describedby="entityHint">
+                <p class="small-muted" id="entityHint">Określ stronę lub aplikację mobilną, której dotyczy audyt.</p>
             </div>
 
             <div class="mb-2">
-                <label class="form-label">Wklej treść deklaracji (HTML lub czysty tekst)</label>
+                <label class="form-label" for="declarationText">Wklej treść deklaracji (HTML lub czysty tekst)</label>
                 <textarea id="declarationText" rows="8" class="form-control"
-                    placeholder="Wklej tutaj treść deklaracji... (np. źródło HTML deklaracji)"></textarea>
+                    placeholder="Wklej tutaj treść deklaracji... (np. źródło HTML deklaracji)" aria-describedby="declarationHint"></textarea>
+                <p class="small-muted" id="declarationHint">Zawartość pozostaje lokalnie w Twojej przeglądarce.</p>
             </div>
 
-            <div class="d-flex gap-2">
-                <button id="prefillBtn" class="btn btn-primary">Prefill – wykryj frazy</button>
-                <button id="clearBtn" class="btn btn-outline-secondary">Wyczyść</button>
+            <div class="controls-row">
+                <button id="prefillBtn" class="btn btn-primary" type="button">Wstępna analiza fraz</button>
+                <button id="clearBtn" class="btn btn-outline-secondary" type="button">Wyczyść deklarację</button>
                 <div class="ms-auto small-muted align-self-center">Opracowano na podstawie <a
                         href="https://mc.bip.gov.pl/objasnienia-prawne/warunki-techniczne-publikacji-oraz-struktura-dokumentu-elektronicznego-deklaracji-dostepnosci.html">Warunków
                         technicznych publikacji oraz struktury dokumentu elektronicznego deklaracji dostępności</a>.
@@ -129,38 +679,93 @@
             </div>
         </section>
 
-        <section class="card p-3 mt-2">
-            <h2 class="h6 mb-2">Analiza kolejności sekcji</h2>
-            <p id="sequenceResult" class="small-muted mb-0">Brak wklejonej treści do analizy kolejności.</p>
+        <section class="card p-3 mt-2" id="sequenceSection" aria-labelledby="sequenceHeading">
+            <h2 id="sequenceHeading" class="h5 mb-2">Analiza kolejności sekcji</h2>
+            <p id="sequenceResult" class="small-muted mb-0" role="status" aria-live="polite" aria-atomic="true">Brak wklejonej treści do analizy kolejności.</p>
         </section>
 
-        <section id="checklistSection"></section>
+        <section id="checklistSection" aria-label="Checklist weryfikacyjny elementów deklaracji"></section>
 
-        <section class="card p-3 mt-3">
-            <h2 class="h6">Wynik audytu</h2>
-            <div class="mb-2"><strong>Procent zgodności:</strong> <span id="scorePerc">—</span></div>
-            <div class="mb-2"><strong>Ocena opisowa:</strong> <span id="scoreLabel">—</span></div>
+        <section class="card p-3 mt-3" id="auditResultsSection" aria-labelledby="auditResultsHeading">
+            <h2 id="auditResultsHeading" class="h5">Wynik audytu</h2>
+            <div id="scoreStatus" role="status" aria-live="polite" aria-atomic="true">
+                <div class="mb-2"><strong>Procent zgodności:</strong> <span id="scorePerc">—</span></div>
+                <div class="mb-2"><strong>Ocena opisowa:</strong> <span id="scoreLabel">—</span></div>
+            </div>
             <div class="mb-2"><strong>Braki / krytyczne pozycje:</strong>
-                <ul id="missingList"></ul>
+                <ul id="missingList" aria-live="polite" aria-label="Lista braków i pozycji wymagających uwagi"></ul>
             </div>
             <div class="d-flex gap-2 no-print">
-                <button id="saveDraftBtn" class="btn btn-outline-warning">Zapisz szkic</button>
-                <button id="exportJsonBtn" class="btn btn-outline-primary">Eksportuj JSON</button>
-                <label class="btn btn-outline-secondary mb-0">
-                    Importuj JSON <input id="importJson" type="file" accept="application/json" hidden>
-                </label>
-                <button id="exportHtmlBtn" class="btn btn-success">Eksportuj raport (HTML)</button>
-                <button id="resetBtn" class="btn btn-danger ms-auto">Resetuj</button>
+                <button id="saveDraftBtn" class="btn btn-outline-warning" type="button">Zapisz szkic</button>
+                <button id="exportJsonBtn" class="btn btn-outline-primary" type="button">Eksportuj JSON</button>
+                <input id="importJson" type="file" accept="application/json" class="visually-hidden" aria-hidden="true" tabindex="-1">
+                <button id="importJsonBtn" class="btn btn-outline-info" type="button">Importuj JSON</button>
+                <button id="exportHtmlBtn" class="btn btn-success" type="button">Eksportuj raport (HTML)</button>
+                <button id="resetBtn" class="btn btn-danger ms-auto" type="button">Resetuj</button>
             </div>
         </section>
 
-    </div>
+        <footer class="text-center small-muted mt-3 mb-3" role="contentinfo"><a href="https://github.com/MStankiewiczOfficial/audytor-deklaracji-dostepnosci" target="_blank" rel="noopener">Kod źródłowy</a></footer>
+    </main>
     <script>
-        // Flaga informująca o niezapisanych zmianach.
+    const THEME_KEY = 'audyt-theme-preference';
+    const prefersDarkQuery = typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+        let userSelectedTheme = false;
+
+        function updateThemeToggle(theme) {
+            const btn = document.getElementById('themeToggle');
+            if (!btn) return;
+            const isDark = theme === 'dark';
+            btn.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+            btn.textContent = isDark ? 'Przełącz na jasny motyw' : 'Przełącz na ciemny motyw';
+            btn.setAttribute('title', isDark ? 'Włącz jaśniejszy motyw' : 'Włącz ciemniejszy motyw');
+        }
+
+        function applyTheme(theme, options = {}) {
+            const persist = options.persist ?? userSelectedTheme;
+            if (document.body) document.body.dataset.theme = theme;
+            document.documentElement.style.setProperty('color-scheme', theme === 'dark' ? 'dark light' : 'light dark');
+            updateThemeToggle(theme);
+            if (persist) {
+                try { localStorage.setItem(THEME_KEY, theme); userSelectedTheme = true; } catch (e) { }
+            } else if (!userSelectedTheme) {
+                try { localStorage.removeItem(THEME_KEY); } catch (e) { }
+            }
+        }
+
+        function initTheme() {
+            let storedTheme = null;
+            try { storedTheme = localStorage.getItem(THEME_KEY); } catch (e) { storedTheme = null; }
+            if (storedTheme === 'dark' || storedTheme === 'light') {
+                userSelectedTheme = true;
+                applyTheme(storedTheme, { persist: true });
+            } else {
+                const systemPrefersDark = prefersDarkQuery ? prefersDarkQuery.matches : false;
+                applyTheme(systemPrefersDark ? 'dark' : 'light', { persist: false });
+            }
+            const btn = document.getElementById('themeToggle');
+            if (btn) {
+                btn.addEventListener('click', () => {
+                    const next = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
+                    applyTheme(next, { persist: true });
+                });
+            }
+            if (prefersDarkQuery) {
+                const listener = (event) => {
+                    if (!userSelectedTheme) applyTheme(event.matches ? 'dark' : 'light', { persist: false });
+                };
+                if (prefersDarkQuery.addEventListener) prefersDarkQuery.addEventListener('change', listener);
+                else if (prefersDarkQuery.addListener) prefersDarkQuery.addListener(listener);
+            }
+        }
+
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initTheme);
+        else initTheme();
+
         let DIRTY = false;
-    function markDirty() { DIRTY = true; }
+        function markDirty() { DIRTY = true; }
         function setClean() { DIRTY = false; }
-    const DRAFT_KEY = 'audyt-deklaracji-szkic';
+        const DRAFT_KEY = 'audyt-deklaracji-szkic';
         const CHECKPOINTS = [
             {
                 id: 'isHTML', title: 'Format HTML', required: true, keywords: ['</'], critical: true,
@@ -312,55 +917,101 @@
         }
 
         function renderChecklist(state) {
-            const sec = document.getElementById('checklistSection'); sec.innerHTML = '';
-            const card = e('div', { class: 'card p-3' });
-            card.appendChild(e('h2', { class: 'h6 mb-2' }, 'Checklist — elementy deklaracji (z cytatami i wytłumaczeniami)'));
-            CHECKPOINTS.forEach(cp => {
-                const found = state && state[cp.id] && typeof state[cp.id].prefill !== 'undefined' ? state[cp.id].prefill : null;
-                const row = e('div', { class: 'row-item', id: 'row_' + cp.id });
-                row.appendChild(e('div', { class: 'd-flex mb-1' }, e('strong', {}, cp.title), e('div', { class: 'ms-auto small-muted' }, cp.required ? 'Wymagane' : 'Opcjonalne')));
-                row.appendChild(e('div', { class: 'small-muted mb-2' }, cp.required ? 'Pozycja wymagana przez warunki techniczne' : 'Pozycja opcjonalna'));
-                const badge = e('div', { class: 'mb-2' });
-                if (found === true) badge.appendChild(e('span', { class: 'badge-found' }, 'wstępnie wykryto'));
-                else if (found === false) badge.appendChild(e('span', { class: 'badge-miss' }, 'nie wykryto'));
-                else badge.appendChild(e('span', { class: 'badge-nd' }, 'brak analizy'));
-                row.appendChild(badge);
-                const ctrl = e('div', { class: 'controls d-flex gap-2 align-items-center' });
+            const sec = document.getElementById('checklistSection');
+            sec.innerHTML = '';
+            const card = e('div', { class: 'card p-3', role: 'region', 'aria-labelledby': 'checklistHeading' });
+            card.appendChild(e('h2', { class: 'h5 mb-3', id: 'checklistHeading' }, 'Checklist — elementy deklaracji'));
+
+            CHECKPOINTS.forEach((cp, index) => {
+                const stateItem = state && state[cp.id] ? state[cp.id] : { prefill: null, choice: null, comment: '' };
+                const descId = 'desc_' + cp.id;
+                const badgeId = 'badge_' + cp.id;
+
+                const fieldset = e('fieldset', { class: 'row-item', id: 'row_' + cp.id });
+                fieldset.appendChild(e('legend', { class: 'row-title' }, `${index + 1}. ${cp.title}`));
+                fieldset.appendChild(e('p', { class: 'row-description small-muted', id: descId }, cp.required ? 'Pozycja wymagana przez warunki techniczne' : 'Pozycja opcjonalna'));
+
+                const badgeWrapper = e('div', { class: 'badge-wrapper', id: badgeId, 'aria-live': 'polite' });
+                if (stateItem.prefill === true) badgeWrapper.appendChild(e('span', { class: 'badge-found' },
+                    e('i', { class: 'badge-icon bi bi-search-heart-fill', 'aria-hidden': 'true' }),
+                    ' Wstępnie wykryto'));
+                else if (stateItem.prefill === false) badgeWrapper.appendChild(e('span', { class: 'badge-miss' },
+                    e('i', { class: 'badge-icon bi bi-exclamation-octagon-fill', 'aria-hidden': 'true' }),
+                    ' Nie wykryto'));
+                else badgeWrapper.appendChild(e('span', { class: 'badge-nd' },
+                    e('i', { class: 'badge-icon bi bi-question-circle-fill', 'aria-hidden': 'true' }),
+                    ' Brak analizy'));
+                fieldset.appendChild(badgeWrapper);
+
+                const choiceGroup = e('div', { class: 'choice-group', role: 'radiogroup', 'aria-describedby': descId, 'aria-label': `Ocena dla wymogu: ${cp.title}` });
+                if (cp.required) choiceGroup.setAttribute('aria-required', 'true');
                 const name = 'choice_' + cp.id;
                 ['Spełnione', 'Niespełnione', 'Nie dotyczy'].forEach((lbl, i) => {
                     const v = i === 0 ? 'ok' : (i === 1 ? 'no' : 'na');
-                    const id = name + '_' + v;
-                    const input = e('input', { type: 'radio', name: name, id: id, value: v });
-                    if (state && state[cp.id] && state[cp.id].choice === v) input.checked = true;
-                    const label = e('label', { class: 'btn btn-outline-secondary btn-sm mb-0', for: id }, lbl);
-                    label.insertBefore(input, label.firstChild);
-                    ctrl.appendChild(label);
+                    const input = e('input', { type: 'radio', name: name, value: v, 'aria-describedby': descId });
+                    if (stateItem.choice === v) input.checked = true;
+                    const labelEl = e('label', { class: 'choice-label', 'data-choice': v });
+                    labelEl.appendChild(input);
+                    labelEl.appendChild(e('span', { class: 'choice-label-text' }, lbl));
+                    choiceGroup.appendChild(labelEl);
                 });
-                const comment = e('textarea', { class: 'form-control form-control-sm ms-2', placeholder: 'Komentarz (opcjonalny)', rows: '3' });
-                comment.value = (state && state[cp.id] ? state[cp.id].comment || '' : '');
-                comment.style.maxWidth = '48%';
-                ctrl.appendChild(comment);
-                row.appendChild(ctrl);
+                fieldset.appendChild(choiceGroup);
+
+                const commentId = 'comment_' + cp.id;
+                const comment = e('textarea', {
+                    class: 'form-control form-control-sm choice-comment',
+                    placeholder: 'Uwagi (opcjonalne)',
+                    rows: '3',
+                    id: commentId,
+                    'aria-describedby': descId,
+                    'aria-label': `Uwagi dotyczące wymogu: ${cp.title}`
+                });
+                comment.value = stateItem.comment || '';
+                fieldset.appendChild(comment);
+
                 const details = e('details', {});
                 details.appendChild(e('summary', {}, 'Szczegóły z Warunków Technicznych (cytat + wytłumaczenie)'));
-                details.appendChild(e('div', { class: 'mt-2' }, e('pre', { class: 'quote' }, cp.quote)));
+                details.appendChild(e('div', { class: 'mt-2' }, e('pre', { class: 'quote', role: 'note' }, cp.quote)));
                 details.appendChild(e('div', { class: 'mt-2' }, e('strong', {}, 'Wytłumaczenie:'), e('div', { class: 'small-muted' }, cp.para)));
-                row.appendChild(details);
-                card.appendChild(row);
+                fieldset.appendChild(details);
+
+                card.appendChild(fieldset);
             });
+
             sec.appendChild(card);
             attachListeners();
+            syncChoiceVisualState();
         }
 
         function attachListeners() {
             document.querySelectorAll('[id^="row_"]').forEach(row => {
-                row.querySelectorAll('input[type=radio]').forEach(r => r.addEventListener('change', updateScore));
-                const comment = row.querySelector('textarea'); comment && comment.addEventListener('input', updateScore);
+                row.querySelectorAll('input[type=radio]').forEach(radio => {
+                    radio.addEventListener('change', () => {
+                        syncChoiceVisualState();
+                        updateScore();
+                        markDirty();
+                    });
+                });
+                const comment = row.querySelector('textarea');
+                if (comment) {
+                    comment.addEventListener('input', () => {
+                        updateScore();
+                        markDirty();
+                    });
+                }
             });
-            // Oznacz zmiany w checklistcie.
-            document.querySelectorAll('[id^="row_"] input[type=radio]').forEach(r => r.addEventListener('change', markDirty));
-            document.querySelectorAll('[id^="row_"] textarea').forEach(t => t.addEventListener('input', markDirty));
-            updateScore(); checkSequence();
+            updateScore();
+            checkSequence();
+        }
+
+        function syncChoiceVisualState() {
+            document.querySelectorAll('.choice-label').forEach(label => label.removeAttribute('data-state'));
+            document.querySelectorAll('.choice-label input[type="radio"]').forEach(input => {
+                if (input.checked) {
+                    const label = input.closest('.choice-label');
+                    if (label) label.setAttribute('data-state', 'checked');
+                }
+            });
         }
 
         function detectPrefill(text) {
@@ -376,8 +1027,15 @@
         }
 
         function checkSequence() {
+            const seqEl = document.getElementById('sequenceResult');
+            if (!seqEl) return;
             const text = document.getElementById('declarationText').value || '';
-            if (!text) { document.getElementById('sequenceResult') && (document.getElementById('sequenceResult').textContent = 'Brak wklejonej treści do analizy kolejności.'); return; }
+            seqEl.classList.remove('status-positive', 'status-warning', 'status-danger');
+            if (!text.trim()) {
+                seqEl.textContent = 'Brak wklejonej treści do analizy kolejności.';
+                seqEl.classList.add('status-warning');
+                return;
+            }
             const expected = ['Deklaracja dostępności', 'Stan dostępności cyfrowej', 'Niedostępne treści', 'Przygotowanie deklaracji dostępności', 'Udogodnienia, ograniczenia i inne informacje', 'Skróty klawiszowe', 'Informacje zwrotne i dane kontaktowe', 'Obsługa wniosków i skarg związanych z dostępnością', 'Pozostałe informacje', 'Aplikacje mobilne', 'Dostępność architektoniczna', 'Dostępność komunikacyjno-informacyjna'];
             const lc = text.toLowerCase();
             const foundPositions = expected.map(title => ({ title, idx: lc.indexOf(title.toLowerCase()) }));
@@ -389,14 +1047,20 @@
                 if (ni < ei) { ok = false; break; }
             }
             let msg = '';
-            if (foundOnly.length === 0) msg = 'Nie wykryto nagłówków z oczekiwanej listy.';
-            else { msg = `Wykryto ${foundOnly.length}/${expected.length} nagłówków. ` + (ok ? 'Kolejność wykrytych sekcji zgodna.' : 'Kolejność może być nieprawidłowa.'); }
-            const seqEl = document.getElementById('sequenceResult'); if (seqEl) seqEl.textContent = msg; document.getElementById('sequenceResult') && (document.getElementById('sequenceResult').style.color = ok ? 'green' : 'darkred');
+            if (foundOnly.length === 0) {
+                msg = 'Nie wykryto nagłówków z oczekiwanej listy.';
+                seqEl.classList.add('status-danger');
+            } else {
+                msg = `Wykryto ${foundOnly.length}/${expected.length} nagłówków. ` + (ok ? 'Kolejność wykrytych sekcji zgodna.' : 'Kolejność może być nieprawidłowa.');
+                seqEl.classList.add(ok ? 'status-positive' : 'status-warning');
+            }
+            seqEl.textContent = msg;
         }
 
         function updateScore() {
             let considered = 0, ok = 0;
             const missing = [];
+            const unanswered = [];
             CHECKPOINTS.forEach(cp => {
                 const name = 'choice_' + cp.id;
                 const chosen = document.querySelector('input[name="' + name + '"]:checked');
@@ -408,25 +1072,52 @@
                         considered++;
                         if (chosen.value === 'ok') ok++;
                         else if (chosen.value === 'no') {
-                            missing.push(cp.title + ' — ' + (cp.critical ? 'krytyczny brak. ' : '') + (comment ? 'Komentarz: ' + comment : ''));
+                            missing.push(cp.title + ' — ' + (cp.critical ? 'krytyczny brak. ' : '') + (comment ? 'Uwagi: ' + comment : ''));
                         }
                     }
                 } else {
-                    considered++;
-                    missing.push(cp.title + ' — niezweryfikowane');
+                    unanswered.push(cp.title);
                 }
             });
-            let percDisplay = '—', label = '—';
+            let percDisplay = '—', label = '—', percValue = null;
             if (considered > 0) {
-                const perc = Math.round((ok / considered) * 100);
-                percDisplay = perc + ' %';
-                label = perc >= 90 ? 'Poprawna' : (perc >= 70 ? 'Ryzyko' : 'Niezgodna');
+                percValue = Math.round((ok / considered) * 100);
+                percDisplay = percValue + ' %';
+                if (percValue === 100) label = 'Zgodna z wytycznymi';
+                else if (percValue >= 90) label = 'Wysoki poziom zgodności — uzupełnij wskazane braki';
+                else if (percValue >= 70) label = 'Częściowa zgodność — wymagane działania naprawcze';
+                else label = 'Brak zgodności z wymaganiami';
+            } else if (missing.length > 0) {
+                label = 'Brak ocenionych pozycji';
             }
-            document.getElementById('scorePerc').textContent = percDisplay;
-            document.getElementById('scoreLabel').textContent = label;
+            const percEl = document.getElementById('scorePerc');
+            const labelEl = document.getElementById('scoreLabel');
+            [percEl, labelEl].forEach(el => el.classList.remove('status-positive', 'status-warning', 'status-danger'));
+            if (percValue !== null) {
+                if (percValue === 100) {
+                    percEl.classList.add('status-positive');
+                    labelEl.classList.add('status-positive');
+                } else if (percValue >= 90) {
+                    percEl.classList.add('status-warning');
+                    labelEl.classList.add('status-warning');
+                } else {
+                    percEl.classList.add('status-danger');
+                    labelEl.classList.add('status-danger');
+                }
+            }
+            percEl.textContent = percDisplay;
+            labelEl.textContent = label;
             const ml = document.getElementById('missingList');
             ml.innerHTML = '';
-            missing.forEach(m => ml.appendChild(e('li', {}, m)));
+            if (missing.length === 0 && unanswered.length === 0) {
+                ml.appendChild(e('li', {}, 'Brak braków — wszystkie ocenione pozycje spełniają wymagania.'));
+            } else {
+                missing.forEach(m => ml.appendChild(e('li', {}, m)));
+                if (unanswered.length) {
+                    const summary = unanswered.slice(0, 8).join(', ') + (unanswered.length > 8 ? `, … (łącznie ${unanswered.length} pozycji)` : '');
+                    ml.appendChild(e('li', {}, 'Brak oceny dla: ' + summary));
+                }
+            }
         }
 
         function collectState() {
@@ -439,29 +1130,29 @@
                 items: {}
             };
             let considered = 0, ok = 0;
+            const detectedPrefill = detectPrefill(document.getElementById('declarationText').value || '');
             CHECKPOINTS.forEach(cp => {
                 const name = 'choice_' + cp.id;
                 const chosen = document.querySelector('input[name="' + name + '"]:checked');
                 const commentEl = document.querySelector('#row_' + cp.id + ' textarea');
                 const comment = commentEl ? (commentEl.value || '') : '';
-                const prefill = (function () {
-                    const dt = document.getElementById('declarationText').value || '';
-                    const det = detectPrefill(dt);
-                    return det ? !!det[cp.id] : null;
-                })();
+                const prefill = detectedPrefill ? !!detectedPrefill[cp.id] : null;
                 const choiceVal = chosen ? chosen.value : null;
                 if (choiceVal && choiceVal !== 'na') {
                     considered++;
                     if (choiceVal === 'ok') ok++;
-                } else if (!choiceVal) {
-                    considered++;
                 }
                 obj.items[cp.id] = { title: cp.title, required: !!cp.required, choice: choiceVal, comment: comment, prefill: prefill };
             });
             let percent = '—', label = '—';
             if (considered > 0) {
                 percent = Math.round((ok / considered) * 100);
-                label = percent >= 90 ? 'Poprawna' : (percent >= 70 ? 'Ryzyko' : 'Niezgodna');
+                if (percent === 100) label = 'Zgodna z wytycznymi';
+                else if (percent >= 90) label = 'Wysoki poziom zgodności — uzupełnij wskazane braki';
+                else if (percent >= 70) label = 'Częściowa zgodność — wymagane działania naprawcze';
+                else label = 'Brak zgodności z wymaganiami';
+            } else {
+                label = 'Brak ocenionych pozycji';
             }
             obj.summary = { percent, label };
             return obj;
@@ -517,6 +1208,10 @@
             setClean();
         });
 
+        document.getElementById('importJsonBtn').addEventListener('click', () => {
+            document.getElementById('importJson').click();
+        });
+
         document.getElementById('importJson').addEventListener('change', (ev) => {
             const f = ev.target.files[0];
             if (!f) return;
@@ -543,6 +1238,7 @@
                         const commentEl2 = document.querySelector('#row_' + id + ' textarea');
                         if (commentEl2) commentEl2.value = state[id].comment || '';
                     });
+                    syncChoiceVisualState();
                     updateScore();
                     checkSequence();
                 } catch (e) {
@@ -553,7 +1249,8 @@
             ev.target.value = '';
         });
 
-        // Zapis szkicu do localStorage
+        
+        
         function saveDraft() {
             const st = collectState();
             st.rawDeclaration = document.getElementById('declarationText').value || '';
@@ -567,7 +1264,8 @@
             }
         }
 
-        // Przywracanie szkicu z localStorage
+        
+        
         function restoreDraft(d) {
             try {
                 if (!d) return;
@@ -592,6 +1290,7 @@
                     const commentEl2 = document.querySelector('#row_' + id + ' textarea');
                     if (commentEl2) commentEl2.value = state[id].comment || '';
                 });
+                syncChoiceVisualState();
                 updateScore();
                 checkSequence();
                 setClean();
@@ -600,8 +1299,7 @@
             }
         }
 
-        // Event dla przycisku zapisu szkicu
-        document.getElementById('saveDraftBtn').addEventListener('click', saveDraft);
+    document.getElementById('saveDraftBtn').addEventListener('click', saveDraft);
 
         document.getElementById('exportHtmlBtn').addEventListener('click', () => {
             const st = collectState();
@@ -613,23 +1311,22 @@
             const entity = st.meta.entity || '—';
             const auditDate = st.meta.auditDate || '—';
             const author = st.meta.author || '—';
-            let html = `<!doctype html><html><head><meta charset="utf-8"><title>Raport audytu deklaracji — ${escapeHtml(entity)}</title><style>body{font-family:Arial,Helvetica,sans-serif;padding:20px;color:#111}h1{font-size:18px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:8px;text-align:left}.bad{color:#b00}.comment{white-space:pre-wrap}</style></head><body><h1>Raport audytu deklaracji dostępności</h1><p><strong>Podmiot / strona:</strong> ${escapeHtml(entity)}<br/><strong>Data audytu:</strong> ${escapeHtml(auditDate)}<br/><strong>Autor raportu:</strong> ${escapeHtml(author)}</p><h2>Podsumowanie</h2><p><strong>Procent zgodności:</strong> ${st.summary.percent === '—' ? '—' : st.summary.percent + '%'}<br/><strong>Ocena:</strong> ${escapeHtml(st.summary.label)}</p><h2>Wykaz pozycji</h2><table><thead><tr><th>Wymóg</th><th>Wynik</th><th>Wymagany</th><th>Komentarz</th></tr></thead><tbody>`;
+            let html = `<!doctype html><html><head><meta charset=\"utf-8\"><title>Raport audytu deklaracji — ${escapeHtml(entity)}</title><style>body{font-family:Arial,Helvetica,sans-serif;padding:20px;color:#111}h1{font-size:18px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:8px;text-align:left}.bad{color:#b00}.comment{white-space:pre-wrap}</style></head><body><h1>Raport audytu deklaracji dostępności</h1><p><strong>Podmiot / strona:</strong> ${escapeHtml(entity)}<br/><strong>Data audytu:</strong> ${escapeHtml(auditDate)}<br/><strong>Autor raportu:</strong> ${escapeHtml(author)}</p><h2>Podsumowanie</h2><p><strong>Procent zgodności:</strong> ${st.summary.percent === '—' ? '—' : st.summary.percent + '%'}<br/><strong>Ocena:</strong> ${escapeHtml(st.summary.label)}</p><h2>Wykaz pozycji</h2><table><thead><tr><th>Wymóg</th><th>Wynik</th><th>Wymagany</th></tr></thead><tbody>`;
             for (const cp of CHECKPOINTS) {
                 const it = st.items[cp.id];
                 const choiceLabel = it.choice === 'ok' ? 'Spełnione' : (it.choice === 'no' ? 'Niespełnione' : (it.choice === 'na' ? 'Nie dotyczy' : 'Nie zweryfikowano'));
-                html += `<tr><td>${escapeHtml(cp.title)}</td><td>${escapeHtml(choiceLabel)}</td><td>${cp.required ? 'Tak' : 'Nie'}</td><td class="comment">${escapeHtml(it.comment || '')}</td></tr>`;
+                html += `<tr><td>${escapeHtml(cp.title)}</td><td>${escapeHtml(choiceLabel)}</td><td>${cp.required ? 'Tak' : 'Nie'}</td></tr>`;
             }
             html += `</tbody></table>`;
-            const issues = [];
+            const notes = [];
             for (const cp of CHECKPOINTS) {
                 const it = st.items[cp.id];
-                if (it.choice === 'no' || (!it.choice)) {
-                    issues.push(cp.title + ' — ' + (it.comment || 'brak komentarza'));
-                }
+                const c = (it.comment || '').trim();
+                if (c) notes.push(`${cp.title}: ${c}`);
             }
-            if (issues.length) {
-                html += `<h2>Braki i uwagi</h2><ul>`;
-                issues.forEach(i => html += `<li class="comment">${escapeHtml(i)}</li>`);
+            if (notes.length) {
+                html += `<h2>Uwagi</h2><ul>`;
+                notes.forEach(n => html += `<li class=\"comment\">${escapeHtml(n)}</li>`);
                 html += `</ul>`;
             }
             html += `</body></html>`;
@@ -673,31 +1370,31 @@
                 msg += `- Niewybrane odpowiedzi (${missingAnswers.length}):\n` + summarize(missingAnswers) + '\n';
             }
             if (missingComments.length) {
-                msg += `- „Niespełnione” bez komentarza (${missingComments.length}):\n` + summarize(missingComments) + '\n';
+                msg += `- „Niespełnione” bez uwagi (${missingComments.length}):\n` + summarize(missingComments) + '\n';
             }
             msg += '\nNie eksportuj — Anuluj\nEksportuj mimo to — OK';
             return { ok: false, message: msg };
         }
 
-        // Oznacz pola meta i deklaracji jako dirty przy zmianach.
         ['entityName','auditDate','authorName','declarationText'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.addEventListener('input', markDirty);
             if (el && el.type === 'date') el.addEventListener('change', markDirty);
         });
 
-        // Ostrzeżenie przy próbie zamknięcia/z odświeżenia jeśli są niezapisane zmiany.
+        
+        
+        
         window.addEventListener('beforeunload', (e) => {
             if (!DIRTY) return;
             const msg = 'Masz niezapisane zmiany audytu. Jeśli teraz zamkniesz lub odświeżysz, utracisz postęp.';
-            e.preventDefault(); // Chrome
-            e.returnValue = msg; // Standard
+            e.preventDefault();
+            e.returnValue = msg;
             return msg;
         });
 
         renderChecklist();
 
-        // Auto-wykrywanie szkicu po starcie
         try {
             const draftRaw = localStorage.getItem(DRAFT_KEY);
             if (draftRaw) {
@@ -706,7 +1403,7 @@
                 const ask = confirm(`Wykryto zapisany szkic${info}.\nCzy chcesz go wczytać teraz?`);
                 if (ask) restoreDraft(d);
             }
-        } catch (e) { /* ignore */ }
+        } catch (e) {}
     </script>
 </body>
 
