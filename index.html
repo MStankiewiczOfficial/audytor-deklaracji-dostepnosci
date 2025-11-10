@@ -218,6 +218,14 @@
             margin-bottom: 0.75rem;
         }
 
+        .row-description.flag-required {
+            color: var(--color-warning-status);
+        }
+
+        .row-description.flag-optional {
+            color: var(--color-info);
+        }
+
         .badge-wrapper {
             position: absolute;
             top: 1rem;
@@ -929,7 +937,8 @@
 
                 const fieldset = e('fieldset', { class: 'row-item', id: 'row_' + cp.id });
                 fieldset.appendChild(e('legend', { class: 'row-title' }, `${index + 1}. ${cp.title}`));
-                fieldset.appendChild(e('p', { class: 'row-description small-muted', id: descId }, cp.required ? 'Pozycja wymagana przez warunki techniczne' : 'Pozycja opcjonalna'));
+                const reqClass = cp.required ? 'flag-required' : 'flag-optional';
+                fieldset.appendChild(e('p', { class: 'row-description ' + reqClass, id: descId }, cp.required ? 'Pozycja wymagana' : 'Pozycja opcjonalna w konkretnych przypadkach'));
 
                 const badgeWrapper = e('div', { class: 'badge-wrapper', id: badgeId, 'aria-live': 'polite' });
                 if (stateItem.prefill === true) badgeWrapper.appendChild(e('span', { class: 'badge-found' },
@@ -1084,8 +1093,6 @@
                 percValue = Math.round((ok / considered) * 100);
                 percDisplay = percValue + ' %';
                 if (percValue === 100) label = 'Zgodna z wytycznymi';
-                else if (percValue >= 90) label = 'Wysoki poziom zgodności — uzupełnij wskazane braki';
-                else if (percValue >= 70) label = 'Częściowa zgodność — wymagane działania naprawcze';
                 else label = 'Brak zgodności z wymaganiami';
             } else if (missing.length > 0) {
                 label = 'Brak ocenionych pozycji';
